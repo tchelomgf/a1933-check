@@ -1,6 +1,6 @@
 function Reject () {
     basic.showIcon(IconNames.No)
-    soundExpression.sad.play()
+    // soundExpression.sad.play()
     State = stRejected
 }
 input.onButtonPressed(Button.A, function () {
@@ -34,28 +34,29 @@ let Stand = 0
 let Pulse = 0
 let Count = 0
 let Off = 0
+let State = 0
+let stApproved = 0
+let stRejected = 0
 let stIdle = 0
+stIdle = 0
+stRejected = 3
+stApproved = 4
 let stPlugged = 1
 let stPulsing = 2
-let stApproved = 3
-let stRejected = 4
-let State = stIdle
+State = stIdle
 // 1023 / 3.3 * 0.6
-let ADCStand = 500
+let ADCStand = 300
 // 1023 / 3.3 * 2
 let ADCPulse = 1000
-State = stIdle
 music.setVolume(100)
 // basic.showString("A1933 CHECK")
 serial.redirectToUSB()
 serial.writeLine("")
 serial.writeLine("")
 serial.writeLine("A1933 CHECK")
-pins.analogSetPeriod(AnalogPin.P1, 1000000)
-pins.analogWritePin(AnalogPin.P1, 1021)
 loops.everyInterval(1000, function () {
-    serial.writeString("" + Count + " : " + ("" + Volt) + " : ")
-    serial.writeLine("" + Math.imul(input.runningTime() / CPUTick * 1000, 1) + "us")
+    serial.writeString("Count:" + Count + " Volt:" + Volt + " State:" + State)
+    serial.writeLine(" CPU:" + Math.imul(input.runningTime() / CPUTick * 1000, 1) + "us")
 })
 control.inBackground(function () {
     while (true) {
@@ -75,7 +76,7 @@ control.inBackground(function () {
     }
 })
 loops.everyInterval(400, function () {
-    if (State = stIdle) {
+    if (State == stIdle) {
         if (Stand > 50) {
             basic.showIcon(IconNames.Happy)
             soundExpression.hello.play()
@@ -85,7 +86,7 @@ loops.everyInterval(400, function () {
         }
         Pulse = 0
         Off = 0
-    } else if (State = stPlugged) {
+    } else if (State == stPlugged) {
         if (Off > 1000) {
             Reject()
             Off = 0
@@ -100,7 +101,7 @@ loops.everyInterval(400, function () {
             }
         }
         Stand = 0
-    } else if (State = stPulsing) {
+    } else if (State == stPulsing) {
         CheckPulse()
         if (input.runningTime() - StateTime > 5000) {
             if (Count < 1000) {
@@ -109,12 +110,12 @@ loops.everyInterval(400, function () {
                 Approve()
             }
         }
-    } else if (State = stApproved) {
+    } else if (State == stApproved) {
         CheckPulse()
         if (Off > 50) {
             CleartoIdle()
         }
-    } else if (State = stRejected) {
+    } else if (State == stRejected) {
         if (Off > 50) {
             CleartoIdle()
         }
