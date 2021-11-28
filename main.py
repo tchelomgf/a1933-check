@@ -1,41 +1,64 @@
+def Reject():
+    global State
+    basic.show_icon(IconNames.NO)
+    soundExpression.sad.play()
+    State = stRejected
+
 def on_button_pressed_a():
-    basic.show_number(Count)
+    control.reset()
 input.on_button_pressed(Button.A, on_button_pressed_a)
 
-def on_button_pressed_b():
-    global Count
+def CleartoIdle():
+    global Off, Count, Pulse, Stand, State
+    basic.clear_screen()
+    music.stop_all_sounds()
+    Off = 0
     Count = 0
-    basic.show_number(Count)
-input.on_button_pressed(Button.B, on_button_pressed_b)
-
-Off = 0
-Stand = 0
-Pulse = 0
+    Pulse = 0
+    Stand = 0
+    State = stIdle
+def Approve():
+    global State
+    basic.show_icon(IconNames.YES)
+    soundExpression.yawn.play()
+    State = stApproved
+def CheckPulse():
+    global Pulse
+    if Pulse > 0:
+        Pulse = 0
+        music.play_tone(988, music.beat(BeatFraction.SIXTEENTH))
+        led.toggle(1, 1)
+StateTime = 0
 CPUTick = 0
 Volt = 0
+Stand = 0
+Pulse = 0
 Count = 0
+Off = 0
+State = 0
+stApproved = 0
+stRejected = 0
 stIdle = 0
+stIdle = 0
+stPlugged = 1
+stPulsing = 2
+stRejected = 3
+stApproved = 4
+State = 0
 # 1023 / 3.3 * 0.6
-ADCStand = 500
+ADCStand = 300
 # 1023 / 3.3 * 2
 ADCPulse = 1000
-stPlug = 1
-stPulse = 2
-stApprove = 3
-stReprove = 4
-State = stIdle
 music.set_volume(100)
 # basic.showString("A1933 CHECK")
 serial.redirect_to_usb()
 serial.write_line("")
 serial.write_line("")
 serial.write_line("A1933 CHECK")
-pins.analog_set_period(AnalogPin.P1, 1000000)
-pins.analog_write_pin(AnalogPin.P1, 1021)
 
 def on_every_interval():
-    serial.write_string("" + str(Count) + " : " + ("" + str(Volt)) + " : ")
-    serial.write_line("" + str(Math.imul(input.running_time() / CPUTick * 1000, 1)) + "us")
+    serial.write_string("Count:" + ("" + str(Count)) + " Volt:" + ("" + str(Volt)) + " State:" + ("" + str(State)))
+    serial.write_line(" CPU:" + ("" + str(Math.imul(input.running_time() / CPUTick * 1000, 1))) + "us")
 loops.every_interval(1000, on_every_interval)
 
 def on_in_background():
@@ -55,24 +78,40 @@ def on_in_background():
 control.in_background(on_in_background)
 
 def on_every_interval2():
-    global Pulse, Off, Stand
-    if Pulse > 0:
-        Pulse = 0
-        music.play_tone(988, music.beat(BeatFraction.SIXTEENTH))
-        led.toggle(1, 1)
-    elif Stand > Off:
-        if Off > 0:
-            Off = 0
+    global Stand, State, StateTime, Pulse, Off, Count
+    if State == stIdle:
+        if Stand > 50:
             basic.show_icon(IconNames.HAPPY)
             soundExpression.hello.play()
             Stand = 0
-    elif Off > Stand:
-        if Stand > 0:
-            Stand = 0
-            basic.show_icon(IconNames.YES)
-            soundExpression.yawn.play()
-        else:
-            basic.clear_screen()
-            music.stop_all_sounds()
+            State = stPlugged
+            StateTime = input.running_time()
+        Pulse = 0
+        Off = 0
+    elif State == stPlugged:
+        if Off > 1000:
+            Reject()
             Off = 0
+        elif Pulse > 50:
+            Pulse = 0
+            Count = 0
+            State = stPulsing
+            StateTime = input.running_time()
+        elif input.running_time() - StateTime > 10000:
+            Reject()
+        Stand = 0
+    elif State == stPulsing:
+        CheckPulse()
+        if input.running_time() - StateTime > 5000:
+            if Count < 50000 and Pulse == 0:
+                Reject()
+            else:
+                Approve()
+    elif State == stApproved:
+        CheckPulse()
+        if Off > 50:
+            CleartoIdle()
+    elif State == stRejected:
+        if Off > 50:
+            CleartoIdle()
 loops.every_interval(400, on_every_interval2)
