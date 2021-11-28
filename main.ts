@@ -1,20 +1,50 @@
+function Reject () {
+    basic.showIcon(IconNames.No)
+    soundExpression.sad.play()
+    State = stRejected
+}
 input.onButtonPressed(Button.A, function () {
-    basic.showNumber(Count)
+    control.reset()
 })
-input.onButtonPressed(Button.B, function () {
+function CleartoIdle () {
+    basic.clearScreen()
+    music.stopAllSounds()
+    Off = 0
     Count = 0
-    basic.showNumber(Count)
-})
-let Off = 0
-let Stand = 0
-let Pulse = 0
+    Pulse = 0
+    Stand = 0
+    State = stIdle
+}
+function Approve () {
+    basic.showIcon(IconNames.Yes)
+    soundExpression.yawn.play()
+    State = stApproved
+}
+function CheckPulse () {
+    if (Pulse > 0) {
+        Pulse = 0
+        music.playTone(988, music.beat(BeatFraction.Sixteenth))
+        led.toggle(1, 1)
+    }
+}
+let StateTime = 0
 let CPUTick = 0
 let Volt = 0
+let Stand = 0
+let Pulse = 0
 let Count = 0
+let Off = 0
+let stIdle = 0
+let stPlugged = 1
+let stPulsing = 2
+let stApproved = 3
+let stRejected = 4
+let State = stIdle
 // 1023 / 3.3 * 0.6
 let ADCStand = 500
 // 1023 / 3.3 * 2
 let ADCPulse = 1000
+State = stIdle
 music.setVolume(100)
 // basic.showString("A1933 CHECK")
 serial.redirectToUSB()
@@ -24,7 +54,7 @@ serial.writeLine("A1933 CHECK")
 pins.analogSetPeriod(AnalogPin.P1, 1000000)
 pins.analogWritePin(AnalogPin.P1, 1021)
 loops.everyInterval(1000, function () {
-    serial.writeString("" + Count + " : " + Volt + " : ")
+    serial.writeString("" + Count + " : " + ("" + Volt) + " : ")
     serial.writeLine("" + Math.imul(input.runningTime() / CPUTick * 1000, 1) + "us")
 })
 control.inBackground(function () {
@@ -45,27 +75,48 @@ control.inBackground(function () {
     }
 })
 loops.everyInterval(400, function () {
-    if (Pulse > 0) {
-        Pulse = 0
-        music.playTone(988, music.beat(BeatFraction.Sixteenth))
-        led.toggle(1, 1)
-    } else if (Stand > Off) {
-        if (Off > 0) {
-            Off = 0
+    if (State = stIdle) {
+        if (Stand > 50) {
             basic.showIcon(IconNames.Happy)
             soundExpression.hello.play()
             Stand = 0
+            State = stPlugged
+            StateTime = input.runningTime()
         }
-    } else if (Off > Stand) {
-        if (Stand > 0) {
-            Stand = 0
-            basic.showIcon(IconNames.Yes)
-            soundExpression.yawn.play()
-        } else {
-            basic.clearScreen()
-            music.stopAllSounds()
+        Pulse = 0
+        Off = 0
+    } else if (State = stPlugged) {
+        if (Off > 1000) {
+            Reject()
             Off = 0
+        } else if (Pulse > 50) {
+            Pulse = 0
+            Count = 0
+            State = stPulsing
+            StateTime = input.runningTime()
+        } else {
+            if (input.runningTime() - StateTime > 5000) {
+                Reject()
+            }
+        }
+        Stand = 0
+    } else if (State = stPulsing) {
+        CheckPulse()
+        if (input.runningTime() - StateTime > 5000) {
+            if (Count < 1000) {
+                Reject()
+            } else {
+                Approve()
+            }
+        }
+    } else if (State = stApproved) {
+        CheckPulse()
+        if (Off > 50) {
+            CleartoIdle()
+        }
+    } else if (State = stRejected) {
+        if (Off > 50) {
+            CleartoIdle()
         }
     }
-
 })
