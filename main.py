@@ -1,8 +1,9 @@
 def Reject():
-    global State
+    global State, Off
     basic.show_icon(IconNames.NO)
     soundExpression.sad.play()
     State = stRejected
+    Off = 0
 
 def on_button_pressed_a():
     control.reset()
@@ -18,16 +19,18 @@ def CleartoIdle():
     Stand = 0
     State = stIdle
 def Approve():
-    global State
+    global State, Off
     basic.show_icon(IconNames.YES)
-    soundExpression.yawn.play()
+    soundExpression.spring.play()
     State = stApproved
+    Off = 0
 def CheckPulse():
     global Pulse
     if Pulse > 0:
         Pulse = 0
         music.play_tone(988, music.beat(BeatFraction.SIXTEENTH))
-        led.toggle(1, 1)
+        if State != stApproved:
+            led.toggle(1, 1)
 StateTime = 0
 CPUTick = 0
 Volt = 0
@@ -36,21 +39,20 @@ Pulse = 0
 Count = 0
 Off = 0
 State = 0
-stApproved = 0
 stRejected = 0
+stApproved = 0
 stIdle = 0
 stIdle = 0
 stPlugged = 1
 stPulsing = 2
-stRejected = 3
-stApproved = 4
+stApproved = 3
+stRejected = 4
 State = 0
-# 1023 / 3.3 * 0.6
-ADCStand = 300
-# 1023 / 3.3 * 2
-ADCPulse = 1000
-music.set_volume(100)
-# basic.showString("A1933 CHECK")
+ADCStand = 1023 / 3.3 * 0.09
+ADCPulse = 1023 / 3.3 * 0.42
+music.set_volume(255)
+soundExpression.yawn.play()
+basic.show_string("A1933 CHECK")
 serial.redirect_to_usb()
 serial.write_line("")
 serial.write_line("")
@@ -60,22 +62,6 @@ def on_every_interval():
     serial.write_string("Count:" + ("" + str(Count)) + " Volt:" + ("" + str(Volt)) + " State:" + ("" + str(State)))
     serial.write_line(" CPU:" + ("" + str(Math.imul(input.running_time() / CPUTick * 1000, 1))) + "us")
 loops.every_interval(1000, on_every_interval)
-
-def on_in_background():
-    global Volt, CPUTick, Pulse, Count, Stand, Off
-    while True:
-        for index in range(1000):
-            Volt = pins.analog_read_pin(AnalogPin.P0)
-            CPUTick += 1
-            if Volt > ADCPulse:
-                Pulse += 1
-                Count += 1
-            elif Volt > ADCStand:
-                Stand += 1
-            else:
-                Off += 1
-        basic.pause(0)
-control.in_background(on_in_background)
 
 def on_every_interval2():
     global Stand, State, StateTime, Pulse, Off, Count
@@ -102,7 +88,7 @@ def on_every_interval2():
         Stand = 0
     elif State == stPulsing:
         CheckPulse()
-        if input.running_time() - StateTime > 5000:
+        if input.running_time() - StateTime > 8000:
             if Count < 50000 and Pulse == 0:
                 Reject()
             else:
@@ -114,4 +100,20 @@ def on_every_interval2():
     elif State == stRejected:
         if Off > 50:
             CleartoIdle()
-loops.every_interval(400, on_every_interval2)
+loops.every_interval(350, on_every_interval2)
+
+def on_in_background():
+    global Volt, CPUTick, Pulse, Count, Stand, Off
+    while True:
+        for index in range(1000):
+            Volt = pins.analog_read_pin(AnalogPin.P0)
+            CPUTick += 1
+            if Volt > ADCPulse:
+                Pulse += 1
+                Count += 1
+            elif Volt > ADCStand:
+                Stand += 1
+            else:
+                Off += 1
+        basic.pause(0)
+control.in_background(on_in_background)

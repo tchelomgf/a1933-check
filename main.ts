@@ -34,7 +34,6 @@ function CheckPulse () {
 let StateTime = 0
 let CPUTick = 0
 let Volt = 0
-let stIdle = 0
 let Stand = 0
 let Pulse = 0
 let Count = 0
@@ -42,17 +41,18 @@ let Off = 0
 let State = 0
 let stRejected = 0
 let stApproved = 0
+let stIdle = 0
+stIdle = 0
 let stPlugged = 1
 let stPulsing = 2
 stApproved = 3
 stRejected = 4
 State = 0
-// 1023 / 3.3 * 0.6
-let ADCStand = 300
-// 1023 / 3.3 * 2
-let ADCPulse = 1000
+let ADCStand = 1023 / 3.3 * 0.09
+let ADCPulse = 1023 / 3.3 * 0.42
 music.setVolume(255)
-// basic.showString("A1933 CHECK")
+soundExpression.yawn.play()
+basic.showString("A1933 CHECK")
 serial.redirectToUSB()
 serial.writeLine("")
 serial.writeLine("")
