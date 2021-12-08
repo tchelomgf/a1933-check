@@ -88,7 +88,7 @@ loops.everyInterval(350, function () {
     } else if (State == stPulsing) {
         CheckPulse()
         if (input.runningTime() - StateTime > 8000) {
-            if (Count < 50000 && Pulse == 0) {
+            if (Count < 1000 || Pulse == 0) {
                 Reject()
             } else {
                 Approve()
